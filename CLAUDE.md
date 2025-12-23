@@ -48,5 +48,4 @@ Uses `@/*` path alias for imports from `src/`.
 
 Detailed specifications in `documenation/`:
 - `PRD.md` - Product requirements and feature specs
-- `TECH_STACK_DOCUMENTATION.md` - Detailed technical specifications
-- `QUICK_REFERENCE.md` - Setup links and environment variables
+- `TECH_STACK_DOCUMENTATION.md` - Complete technical specifications with quick start guide

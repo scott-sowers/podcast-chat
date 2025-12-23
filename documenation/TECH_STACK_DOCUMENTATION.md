@@ -1,21 +1,245 @@
-# Comprehensive Tech Stack Documentation
+# Tech Stack Documentation
 
-This document provides detailed documentation, API references, and integration examples for the podcast-chat application stack.
+Complete documentation for the Podcast Chat application stack. Start with [Quick Start](#quick-start) to get running quickly, then refer to detailed sections as needed.
 
 ---
 
 ## Table of Contents
 
+### Quick Start
+- [Essential Links](#essential-links)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables-quick-start)
+- [Essential Code Snippets](#essential-code-snippets)
+
+### Detailed Documentation
+
 1. [Next.js 16 - App Router](#nextjs-16---app-router)
 2. [Supabase](#supabase)
-3. [Clerk (Multi-Tenant Authentication)](#clerk-multi-tenant-authentication)
-4. [ShadCN UI](#shadcn-ui)
-5. [AI Elements Registry](#ai-elements-registry)
-6. [Vercel AI SDK](#vercel-ai-sdk)
-7. [Trigger.dev](#triggerdev)
-8. [Chroma Cloud](#chroma-cloud)
-9. [Deepgram](#deepgram)
-10. [Model Context Protocol (MCP)](#model-context-protocol-mcp)
+3. [Clerk (Authentication)](#clerk-authentication)
+4. [Taddy API (Podcast Data)](#taddy-api-podcast-data)
+5. [ShadCN UI](#shadcn-ui)
+6. [AI Elements Registry](#ai-elements-registry)
+7. [Vercel AI SDK](#vercel-ai-sdk)
+8. [Trigger.dev](#triggerdev)
+9. [Chroma Cloud](#chroma-cloud)
+10. [Deepgram](#deepgram)
+11. [Model Context Protocol (MCP)](#model-context-protocol-mcp)
+
+---
+
+# Quick Start
+
+Get up and running quickly with essential links, commands, and code snippets.
+
+## Essential Links
+
+### Official Documentation
+| Technology | Documentation |
+|------------|---------------|
+| Next.js 16 | https://nextjs.org/docs |
+| Supabase | https://supabase.com/docs |
+| Clerk | https://clerk.com/docs |
+| Taddy API | https://taddy.org/developers |
+| AI SDK | https://ai-sdk.dev/docs |
+| ShadCN UI | https://ui.shadcn.com/docs |
+| ChromaDB | https://docs.trychroma.com/ |
+| Deepgram | https://developers.deepgram.com/ |
+| Trigger.dev | https://trigger.dev/docs |
+
+## Installation
+
+```bash
+# Create Next.js project
+npx create-next-app@latest podcast-chat --typescript --tailwind --app
+cd podcast-chat
+
+# Core dependencies
+pnpm add @supabase/supabase-js @supabase/ssr
+pnpm add @clerk/nextjs
+pnpm add ai @ai-sdk/openai @ai-sdk/react
+pnpm add chromadb
+pnpm add @deepgram/sdk
+pnpm add @trigger.dev/sdk @trigger.dev/nextjs
+pnpm add zod
+
+# UI components
+npx shadcn@latest init
+npx shadcn@latest add button card dialog input textarea scroll-area
+```
+
+## Environment Variables (Quick Start)
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+# Taddy
+TADDY_USER_ID=
+TADDY_API_KEY=
+
+# OpenAI
+OPENAI_API_KEY=
+
+# Chroma Cloud
+CHROMA_CLOUD_URL=https://api.trychroma.com
+CHROMA_API_KEY=
+
+# Deepgram
+DEEPGRAM_API_KEY=
+
+# Trigger.dev
+TRIGGER_SECRET_KEY=
+```
+
+## Essential Code Snippets
+
+### Clerk Middleware (proxy.ts)
+```typescript
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+
+const isProtectedRoute = createRouteMatcher([
+  '/library(.*)', '/podcasts(.*)', '/chat(.*)',
+  '/api/chat(.*)', '/api/podcasts(.*)', '/api/episodes(.*)',
+])
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect()
+})
+
+export const config = {
+  matcher: ['/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)', '/(api|trpc)(.*)'],
+}
+```
+
+### Supabase Server Client
+```typescript
+// utils/supabase/server.ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+export async function createClient() {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        },
+      },
+    }
+  )
+}
+```
+
+### Clerk + Supabase Integration
+```typescript
+// lib/supabase/clerk-server.ts
+import { createClient } from '@supabase/supabase-js'
+import { auth } from '@clerk/nextjs/server'
+
+export async function createServerSupabaseClient() {
+  const { getToken } = await auth()
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { accessToken: async () => await getToken() ?? null }
+  )
+}
+```
+
+### Taddy GraphQL Client
+```typescript
+// lib/taddy.ts
+export async function taddyQuery<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  const res = await fetch('https://api.taddy.org', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-USER-ID': process.env.TADDY_USER_ID!,
+      'X-API-KEY': process.env.TADDY_API_KEY!,
+    },
+    body: JSON.stringify({ query, variables }),
+  })
+  const { data, errors } = await res.json()
+  if (errors) throw new Error(errors[0].message)
+  return data
+}
+```
+
+### AI Chat API Route
+```typescript
+// app/api/chat/route.ts
+import { openai } from '@ai-sdk/openai'
+import { streamText } from 'ai'
+
+export async function POST(req: Request) {
+  const { messages } = await req.json()
+  const result = streamText({ model: openai('gpt-4-turbo'), messages })
+  return result.toDataStreamResponse()
+}
+```
+
+### Chat Component
+```typescript
+'use client'
+import { useChat } from '@ai-sdk/react'
+
+export function Chat() {
+  const { messages, input, handleInputChange, handleSubmit } = useChat()
+  return (
+    <div>
+      {messages.map(m => <div key={m.id}>{m.role}: {m.content}</div>)}
+      <form onSubmit={handleSubmit}>
+        <input value={input} onChange={handleInputChange} />
+      </form>
+    </div>
+  )
+}
+```
+
+### Protected Page Pattern
+```typescript
+// app/library/page.tsx
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import { createServerSupabaseClient } from '@/lib/supabase/clerk-server'
+
+export default async function LibraryPage() {
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
+
+  const supabase = await createServerSupabaseClient()
+  const { data: podcasts } = await supabase
+    .from('user_podcasts')
+    .select('*, podcast:podcasts(*)')
+    .order('added_at', { ascending: false })
+
+  return <PodcastLibrary podcasts={podcasts} />
+}
+```
+
+### Version Compatibility
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| Next.js | 16.0+ | Node.js 20.9+ required |
+| React | 19.2+ | |
+| @clerk/nextjs | 6.0+ | |
+| @supabase/ssr | 0.5+ | |
+| ai | 4.2+ | |
+
+---
+
+# Detailed Documentation
 
 ---
 
@@ -909,32 +1133,21 @@ const { data, error } = await supabase
 
 ---
 
-## Clerk (Multi-Tenant Authentication)
+## Clerk (Authentication)
 
 ### Official Documentation
 - **Main Docs**: https://clerk.com/docs
 - **Next.js SDK**: https://clerk.com/docs/nextjs/getting-started/quickstart
-- **Organizations (Multi-Tenant)**: https://clerk.com/docs/guides/organizations/overview
 - **Supabase Integration**: https://clerk.com/docs/guides/development/integrations/databases/supabase
-- **Roles & Permissions**: https://clerk.com/docs/guides/organizations/roles-and-permissions
 - **Components Reference**: https://clerk.com/docs/nextjs/reference/components/overview
 
 ### What is Clerk?
 
 Clerk is a complete user management platform that provides:
-- **Authentication** - Sign-up, sign-in, SSO, social logins, MFA
-- **Organizations** - Multi-tenant support with teams/workspaces
+- **Authentication** - Sign-up, sign-in, SSO, social logins (Google, GitHub), MFA
 - **User Management** - Profiles, sessions, user metadata
-- **Authorization** - Roles, permissions, and access control
 - **Prebuilt Components** - Drop-in UI for auth flows
-
-### Multi-Tenant Architecture with Clerk
-
-Clerk supports the **B2B SaaS** model with a shared user pool:
-- Users create one account and can belong to multiple Organizations
-- Each Organization can have its own Roles and Permissions
-- Users can have different Roles in each Organization
-- Personal Accounts allow users to have resources outside of Organizations
+- **Billing Integration** - Subscription management support
 
 ### Installation
 
@@ -952,8 +1165,8 @@ CLERK_SECRET_KEY=sk_test_xxx
 # Clerk URLs (optional, for custom routes)
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/library
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/library
 ```
 
 ### Basic Setup
@@ -1033,24 +1246,17 @@ export default function RootLayout({
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
+  '/library(.*)',
   '/podcasts(.*)',
+  '/chat(.*)',
   '/api/chat(.*)',
+  '/api/podcasts(.*)',
+  '/api/episodes(.*)',
 ])
 
-const isAdminRoute = createRouteMatcher(['/admin(.*)'])
-
 export default clerkMiddleware(async (auth, req) => {
-  // Protect dashboard routes - require authentication
   if (isProtectedRoute(req)) {
     await auth.protect()
-  }
-
-  // Protect admin routes - require specific permission
-  if (isAdminRoute(req)) {
-    await auth.protect((has) => {
-      return has({ permission: 'org:admin:access' })
-    })
   }
 })
 
@@ -1067,178 +1273,15 @@ export const config = {
 ```typescript
 import { Protect } from '@clerk/nextjs'
 
-export default function SettingsPage() {
+export default function LibraryPage() {
   return (
     <div>
-      <h1>Settings</h1>
+      <h1>Your Podcast Library</h1>
 
       {/* Only authenticated users */}
-      <Protect fallback={<p>Please sign in to view settings.</p>}>
-        <UserSettings />
+      <Protect fallback={<p>Please sign in to view your library.</p>}>
+        <PodcastLibrary />
       </Protect>
-
-      {/* Only users with specific permission */}
-      <Protect
-        permission="org:billing:manage"
-        fallback={<p>You don't have permission to manage billing.</p>}
-      >
-        <BillingSettings />
-      </Protect>
-
-      {/* Only users with specific role */}
-      <Protect
-        role="org:admin"
-        fallback={<p>Only admins can access this section.</p>}
-      >
-        <AdminSettings />
-      </Protect>
-
-      {/* Complex conditions */}
-      <Protect
-        condition={(has) =>
-          has({ role: 'org:admin' }) || has({ role: 'org:billing_manager' })
-        }
-        fallback={<p>Access restricted.</p>}
-      >
-        <AdvancedSettings />
-      </Protect>
-    </div>
-  )
-}
-```
-
-### Organizations (Multi-Tenancy)
-
-#### Organization Switcher Component
-
-```typescript
-'use client'
-
-import { OrganizationSwitcher } from '@clerk/nextjs'
-
-export function Header() {
-  return (
-    <header className="flex items-center justify-between p-4">
-      <h1>Podcast Chat</h1>
-
-      <div className="flex items-center gap-4">
-        <OrganizationSwitcher
-          afterCreateOrganizationUrl="/dashboard"
-          afterLeaveOrganizationUrl="/dashboard"
-          afterSelectOrganizationUrl="/dashboard"
-          hidePersonal={false} // Allow personal account
-        />
-      </div>
-    </header>
-  )
-}
-```
-
-#### Using Organization Data
-
-```typescript
-'use client'
-
-import { useOrganization, useUser } from '@clerk/nextjs'
-
-export function DashboardHeader() {
-  const { user } = useUser()
-  const { organization, membership } = useOrganization()
-
-  if (!user) return null
-
-  return (
-    <div>
-      <p>Welcome, {user.firstName}!</p>
-
-      {organization ? (
-        <div>
-          <p>Current Organization: {organization.name}</p>
-          <p>Your Role: {membership?.role}</p>
-        </div>
-      ) : (
-        <p>Personal Account</p>
-      )}
-    </div>
-  )
-}
-```
-
-#### Managing Organization Members
-
-```typescript
-'use client'
-
-import { useOrganization } from '@clerk/nextjs'
-import type { OrganizationCustomRoleKey } from '@clerk/types'
-
-export function MembersList() {
-  const { memberships, isLoaded } = useOrganization({
-    memberships: {
-      pageSize: 10,
-      keepPreviousData: true,
-    },
-  })
-
-  if (!isLoaded) return <div>Loading...</div>
-
-  return (
-    <div>
-      <h2>Organization Members</h2>
-      <ul>
-        {memberships?.data?.map((membership) => (
-          <li key={membership.id} className="flex items-center justify-between p-2">
-            <div>
-              <span>{membership.publicUserData?.firstName} </span>
-              <span>{membership.publicUserData?.lastName}</span>
-              <span className="text-gray-500 ml-2">
-                ({membership.publicUserData?.identifier})
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm bg-gray-100 px-2 py-1 rounded">
-                {membership.role}
-              </span>
-              <button
-                onClick={async () => {
-                  await membership.update({
-                    role: 'org:member' as OrganizationCustomRoleKey,
-                  })
-                  memberships?.revalidate()
-                }}
-                className="text-sm text-blue-500"
-              >
-                Change Role
-              </button>
-              <button
-                onClick={async () => {
-                  await membership.destroy()
-                  memberships?.revalidate()
-                }}
-                className="text-sm text-red-500"
-              >
-                Remove
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Pagination */}
-      <div className="flex gap-2 mt-4">
-        <button
-          disabled={!memberships?.hasPreviousPage}
-          onClick={() => memberships?.fetchPrevious?.()}
-        >
-          Previous
-        </button>
-        <button
-          disabled={!memberships?.hasNextPage}
-          onClick={() => memberships?.fetchNext?.()}
-        >
-          Next
-        </button>
-      </div>
     </div>
   )
 }
@@ -1249,31 +1292,35 @@ export function MembersList() {
 #### In Server Components
 
 ```typescript
-// app/dashboard/page.tsx
+// app/library/page.tsx
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
 
-export default async function DashboardPage() {
-  const { userId, orgId, orgRole } = await auth()
+export default async function LibraryPage() {
+  const { userId } = await auth()
 
   if (!userId) {
     redirect('/sign-in')
   }
 
   const user = await currentUser()
+  const supabase = await createClient()
+
+  // Fetch user's podcast library
+  const { data: userPodcasts } = await supabase
+    .from('user_podcasts')
+    .select(`
+      *,
+      podcast:podcasts(*)
+    `)
+    .order('added_at', { ascending: false })
 
   return (
     <div>
-      <h1>Dashboard</h1>
-      <p>User ID: {userId}</p>
-      <p>Email: {user?.emailAddresses[0]?.emailAddress}</p>
-
-      {orgId && (
-        <div>
-          <p>Organization ID: {orgId}</p>
-          <p>Your Role: {orgRole}</p>
-        </div>
-      )}
+      <h1>Welcome, {user?.firstName}!</h1>
+      <p>Your Podcast Library</p>
+      {/* Render podcasts */}
     </div>
   )
 }
@@ -1282,46 +1329,34 @@ export default async function DashboardPage() {
 #### In API Routes
 
 ```typescript
-// app/api/podcasts/route.ts
+// app/api/library/route.ts
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
 
 export async function GET() {
-  const { userId, orgId } = await auth()
+  const { userId } = await auth()
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Fetch podcasts scoped to user or organization
-  const podcasts = await db.podcasts.findMany({
-    where: orgId
-      ? { organizationId: orgId }
-      : { userId: userId },
-  })
+  const supabase = await createClient()
+
+  // Fetch user's podcasts from library
+  const { data: podcasts, error } = await supabase
+    .from('user_podcasts')
+    .select(`
+      added_at,
+      podcast:podcasts(*)
+    `)
+    .order('added_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json({ podcasts })
-}
-
-export async function POST(req: Request) {
-  const { userId, orgId } = await auth()
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const { title, audioUrl } = await req.json()
-
-  const podcast = await db.podcasts.create({
-    data: {
-      title,
-      audioUrl,
-      userId,
-      organizationId: orgId || null, // null for personal account
-    },
-  })
-
-  return NextResponse.json({ podcast })
 }
 ```
 
@@ -1332,27 +1367,30 @@ export async function POST(req: Request) {
 
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
+import { createClient } from '@/utils/supabase/server'
 
-export async function createPodcast(formData: FormData) {
-  const { userId, orgId } = await auth()
+export async function addPodcastToLibrary(podcastId: string) {
+  const { userId } = await auth()
 
   if (!userId) {
     throw new Error('Unauthorized')
   }
 
-  const title = formData.get('title') as string
-  const audioUrl = formData.get('audioUrl') as string
+  const supabase = await createClient()
 
-  await db.podcasts.create({
-    data: {
-      title,
-      audioUrl,
-      userId,
-      organizationId: orgId,
-    },
-  })
+  // Add podcast to user's library
+  const { error } = await supabase
+    .from('user_podcasts')
+    .insert({
+      user_id: userId,
+      podcast_id: podcastId,
+    })
 
-  revalidatePath('/podcasts')
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/library')
 }
 ```
 
@@ -1443,98 +1481,107 @@ CREATE OR REPLACE FUNCTION auth.user_id() RETURNS TEXT AS $$
   SELECT nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')::text;
 $$ LANGUAGE SQL STABLE;
 
--- Get organization ID from Clerk JWT
-CREATE OR REPLACE FUNCTION auth.org_id() RETURNS TEXT AS $$
-  SELECT COALESCE(
-    nullif(current_setting('request.jwt.claims', true)::json->>'org_id', ''),
-    nullif(current_setting('request.jwt.claims', true)::json->'o'->>'id', '')
-  )::text;
-$$ LANGUAGE SQL STABLE;
+-- Enable RLS on user-specific tables
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_podcasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_synced_episodes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sync_jobs ENABLE ROW LEVEL SECURITY;
 
--- Get organization role from Clerk JWT
-CREATE OR REPLACE FUNCTION auth.org_role() RETURNS TEXT AS $$
-  SELECT COALESCE(
-    nullif(current_setting('request.jwt.claims', true)::json->>'org_role', ''),
-    nullif(current_setting('request.jwt.claims', true)::json->'o'->>'rol', '')
-  )::text;
-$$ LANGUAGE SQL STABLE;
+-- Users can only access their own profile
+CREATE POLICY "Users can view own profile" ON user_profiles
+  FOR ALL USING (clerk_user_id = auth.user_id());
 
--- Enable RLS on podcasts table
-ALTER TABLE podcasts ENABLE ROW LEVEL SECURITY;
+-- Users can manage their own podcast library
+CREATE POLICY "Users can manage own podcasts" ON user_podcasts
+  FOR ALL USING (user_id IN (
+    SELECT id FROM user_profiles WHERE clerk_user_id = auth.user_id()
+  ));
 
--- Users can view podcasts in their organization
-CREATE POLICY "Users can view org podcasts"
-ON podcasts FOR SELECT
-TO authenticated
-USING (
-  organization_id = auth.org_id()
-  OR (organization_id IS NULL AND user_id = auth.user_id())
-);
+-- Users can manage their own synced episodes
+CREATE POLICY "Users can manage own synced episodes" ON user_synced_episodes
+  FOR ALL USING (user_id IN (
+    SELECT id FROM user_profiles WHERE clerk_user_id = auth.user_id()
+  ));
 
--- Users can insert podcasts into their organization
-CREATE POLICY "Users can insert org podcasts"
-ON podcasts FOR INSERT
-TO authenticated
-WITH CHECK (
-  organization_id = auth.org_id()
-  OR (organization_id IS NULL AND user_id = auth.user_id())
-);
+-- Users can manage their own chat sessions
+CREATE POLICY "Users can manage own chat sessions" ON chat_sessions
+  FOR ALL USING (user_id IN (
+    SELECT id FROM user_profiles WHERE clerk_user_id = auth.user_id()
+  ));
 
--- Only admins can delete podcasts
-CREATE POLICY "Admins can delete podcasts"
-ON podcasts FOR DELETE
-TO authenticated
-USING (
-  auth.org_role() = 'org:admin'
-  AND organization_id = auth.org_id()
-);
+-- Users can view their own chat messages
+CREATE POLICY "Users can view own messages" ON chat_messages
+  FOR ALL USING (session_id IN (
+    SELECT id FROM chat_sessions WHERE user_id IN (
+      SELECT id FROM user_profiles WHERE clerk_user_id = auth.user_id()
+    )
+  ));
+
+-- Podcasts and episodes are publicly readable (shared resources)
+-- Only system can write to these tables
 ```
 
-#### 7. Example: Multi-Tenant Podcast Query
+#### 7. Example: User's Podcast Library Query
 
 ```typescript
 'use client'
 
 import { useSupabaseClient } from '@/lib/supabase/client'
-import { useOrganization } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 
-interface Podcast {
+interface UserPodcast {
   id: string
-  title: string
-  audio_url: string
-  created_at: string
+  added_at: string
+  podcast: {
+    id: string
+    name: string
+    author: string
+    image_url: string
+    total_episodes: number
+  }
 }
 
-export function PodcastList() {
+export function PodcastLibrary() {
   const supabase = useSupabaseClient()
-  const { organization } = useOrganization()
-  const [podcasts, setPodcasts] = useState<Podcast[]>([])
+  const { user } = useUser()
+  const [podcasts, setPodcasts] = useState<UserPodcast[]>([])
 
   useEffect(() => {
-    async function fetchPodcasts() {
-      // RLS policies automatically filter by organization
+    async function fetchLibrary() {
+      // RLS policies automatically filter by user
       const { data, error } = await supabase
-        .from('podcasts')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .from('user_podcasts')
+        .select(`
+          id,
+          added_at,
+          podcast:podcasts(id, name, author, image_url, total_episodes)
+        `)
+        .order('added_at', { ascending: false })
 
       if (!error && data) {
         setPodcasts(data)
       }
     }
 
-    fetchPodcasts()
-  }, [supabase, organization?.id])
+    if (user) {
+      fetchLibrary()
+    }
+  }, [supabase, user])
 
   return (
     <div>
-      <h2>
-        {organization ? `${organization.name}'s Podcasts` : 'Your Podcasts'}
-      </h2>
+      <h2>Your Podcast Library</h2>
       <ul>
-        {podcasts.map((podcast) => (
-          <li key={podcast.id}>{podcast.title}</li>
+        {podcasts.map((item) => (
+          <li key={item.id}>
+            <img src={item.podcast.image_url} alt={item.podcast.name} />
+            <h3>{item.podcast.name}</h3>
+            <p>By {item.podcast.author}</p>
+            <p>{item.podcast.total_episodes} episodes</p>
+          </li>
         ))}
       </ul>
     </div>
@@ -1542,50 +1589,128 @@ export function PodcastList() {
 }
 ```
 
-### Database Schema for Multi-Tenancy
+### Database Schema (Matching PRD)
 
 ```sql
--- Podcasts table with organization support
-CREATE TABLE podcasts (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  audio_url TEXT NOT NULL,
-  user_id TEXT NOT NULL,           -- Clerk user ID
-  organization_id TEXT,             -- Clerk org ID (null for personal)
+-- Users are managed by Clerk, we store additional metadata
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT UNIQUE NOT NULL,
+  subscription_tier TEXT DEFAULT 'free',
+  monthly_chat_count INTEGER DEFAULT 0,
+  monthly_sync_count INTEGER DEFAULT 0,
+  billing_cycle_start TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for efficient org queries
-CREATE INDEX idx_podcasts_org ON podcasts(organization_id);
-CREATE INDEX idx_podcasts_user ON podcasts(user_id);
+-- Global podcast registry (shared across users)
+CREATE TABLE podcasts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  taddy_uuid TEXT UNIQUE NOT NULL,
+  itunes_id TEXT,
+  name TEXT NOT NULL,
+  description TEXT,
+  author TEXT,
+  image_url TEXT,
+  rss_url TEXT,
+  language TEXT,
+  total_episodes INTEGER,
+  genres JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Transcripts table
-CREATE TABLE transcripts (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+-- User's podcast library (many-to-many)
+CREATE TABLE user_podcasts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
   podcast_id UUID REFERENCES podcasts(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  speaker_labels JSONB,
-  organization_id TEXT,
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, podcast_id)
+);
+
+-- Global episode registry (shared across users)
+CREATE TABLE episodes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  podcast_id UUID REFERENCES podcasts(id) ON DELETE CASCADE,
+  taddy_uuid TEXT UNIQUE NOT NULL,
+  guid TEXT,
+  name TEXT NOT NULL,
+  description TEXT,
+  audio_url TEXT,
+  image_url TEXT,
+  duration INTEGER, -- seconds
+  published_at TIMESTAMPTZ,
+  episode_number INTEGER,
+  season_number INTEGER,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Chat messages scoped to organization
+-- Global transcripts (shared across users, deduplicated)
+CREATE TABLE transcripts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  episode_id UUID REFERENCES episodes(id) ON DELETE CASCADE UNIQUE,
+  chroma_collection_id TEXT, -- Reference to Chroma collection
+  source TEXT NOT NULL, -- 'taddy' or 'deepgram'
+  status TEXT DEFAULT 'not_synced', -- not_synced, queued, syncing, synced, failed
+  error_message TEXT,
+  full_text TEXT, -- Store full transcript for backup/display
+  chunk_count INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User's synced episodes (tracks which episodes user has access to)
+CREATE TABLE user_synced_episodes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+  episode_id UUID REFERENCES episodes(id) ON DELETE CASCADE,
+  synced_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, episode_id)
+);
+
+-- Chat sessions
+CREATE TABLE chat_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+  title TEXT,
+  context_podcast_ids UUID[], -- Podcasts included in context
+  context_episode_ids UUID[], -- Specific episodes included
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Chat messages
 CREATE TABLE chat_messages (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  organization_id TEXT,
-  podcast_id UUID REFERENCES podcasts(id),
-  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL, -- 'user' or 'assistant'
   content TEXT NOT NULL,
+  citations JSONB, -- Array of {episode_id, timestamp, text}
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS on all tables
-ALTER TABLE podcasts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transcripts ENABLE ROW LEVEL SECURITY;
+-- Sync jobs tracking
+CREATE TABLE sync_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+  episode_id UUID REFERENCES episodes(id) ON DELETE CASCADE,
+  trigger_run_id TEXT, -- Trigger.dev run ID
+  status TEXT DEFAULT 'queued',
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on user-specific tables
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_podcasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_synced_episodes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sync_jobs ENABLE ROW LEVEL SECURITY;
 ```
 
 ### Prebuilt Components Reference
@@ -1599,9 +1724,6 @@ ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 | `<SignOutButton />` | Button to sign out |
 | `<UserButton />` | User avatar with dropdown menu |
 | `<UserProfile />` | Full user profile management |
-| `<OrganizationSwitcher />` | Switch between organizations |
-| `<OrganizationProfile />` | Manage organization settings |
-| `<CreateOrganization />` | Create new organization form |
 | `<Protect />` | Conditionally render based on auth |
 | `<SignedIn />` | Show content when signed in |
 | `<SignedOut />` | Show content when signed out |
@@ -1612,9 +1734,7 @@ ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 |------|-------------|
 | `useUser()` | Get current user object |
 | `useAuth()` | Get auth state and helpers |
-| `useSession()` | Get current session |
-| `useOrganization()` | Get active organization data |
-| `useOrganizationList()` | List user's organizations |
+| `useSession()` | Get current session (includes getToken for Supabase) |
 | `useSignIn()` | Programmatic sign-in control |
 | `useSignUp()` | Programmatic sign-up control |
 
@@ -1622,9 +1742,367 @@ ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 
 | Function | Description |
 |----------|-------------|
-| `auth()` | Get auth state in server context |
+| `auth()` | Get auth state in server context (userId, getToken) |
 | `currentUser()` | Get full user object |
 | `clerkClient` | Access Clerk Backend API |
+
+---
+
+## Taddy API (Podcast Data)
+
+### Official Documentation
+- **Main Docs**: https://taddy.org/developers
+- **Intro to API**: https://taddy.org/developers/intro-to-taddy-graphql-api
+- **Podcast API**: https://taddy.org/developers/podcast-api
+- **PodcastSeries Type**: https://taddy.org/developers/podcast-api/podcastseries
+- **PodcastEpisode Type**: https://taddy.org/developers/podcast-api/podcastepisode
+- **Example Project**: https://github.com/taddyorg/taddy-api-example-project
+
+### What is Taddy?
+
+Taddy provides a GraphQL API for podcast data with:
+- **4M+ Podcasts** - Comprehensive podcast database
+- **180M+ Episodes** - Full episode metadata and audio URLs
+- **Episode Transcripts** - Pre-generated transcripts for many episodes
+- **Full-Text Search** - Fast search across all podcasts and episodes
+- **Webhook Notifications** - Real-time updates for new episodes
+
+### API Endpoint & Authentication
+
+**Endpoint:** `POST https://api.taddy.org`
+
+**Required Headers:**
+```typescript
+{
+  "Content-Type": "application/json",
+  "X-USER-ID": "your-user-id",
+  "X-API-KEY": "your-api-key"
+}
+```
+
+Get your credentials from the [Taddy Dashboard](https://taddy.org/developers) after signing up.
+
+### Environment Variables
+
+```env
+TADDY_USER_ID=your-user-id
+TADDY_API_KEY=your-api-key
+```
+
+### GraphQL Client Setup
+
+```typescript
+// lib/taddy.ts
+const TADDY_API_URL = 'https://api.taddy.org'
+
+interface TaddyResponse<T> {
+  data: T
+  errors?: Array<{ message: string }>
+}
+
+export async function taddyQuery<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  const response = await fetch(TADDY_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-USER-ID': process.env.TADDY_USER_ID!,
+      'X-API-KEY': process.env.TADDY_API_KEY!,
+    },
+    body: JSON.stringify({ query, variables }),
+  })
+
+  const result: TaddyResponse<T> = await response.json()
+
+  if (result.errors) {
+    throw new Error(result.errors[0].message)
+  }
+
+  return result.data
+}
+```
+
+### Core GraphQL Types
+
+#### PodcastSeries
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uuid` | ID | Taddy's unique identifier |
+| `name` | String | Podcast title |
+| `description` | String | Podcast summary |
+| `authorName` | String | Creator name |
+| `imageUrl` | String | Cover artwork URL |
+| `itunesId` | Int | iTunes identifier |
+| `rssUrl` | String | RSS feed URL |
+| `language` | Language | Primary spoken language |
+| `genres` | [Genre] | Up to 5 genres |
+| `totalEpisodesCount` | Int | Total episode count |
+| `episodes` | [PodcastEpisode] | Paginated episode list |
+| `contentType` | PodcastContentType | Audio or video |
+| `isExplicitContent` | Boolean | Explicit content flag |
+
+#### PodcastEpisode
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uuid` | ID | Unique identifier |
+| `name` | String | Episode title |
+| `description` | String | Episode description |
+| `audioUrl` | String | Audio file URL |
+| `imageUrl` | String | Episode artwork |
+| `duration` | Int | Length in seconds |
+| `datePublished` | Int | Epoch time in seconds |
+| `seasonNumber` | Int | Season designation |
+| `episodeNumber` | Int | Episode number |
+| `guid` | String | RSS feed unique identifier |
+| `taddyTranscribeStatus` | String | Transcript status |
+| `transcript` | String | Parsed transcript text |
+| `transcriptWithSpeakersAndTimecodes` | [TranscriptItem] | Detailed transcript |
+
+### Search Podcasts
+
+```typescript
+// Search for podcasts by name
+const SEARCH_PODCASTS = `
+  query SearchPodcasts($term: String!) {
+    searchForTerm(term: $term, filterForTypes: PODCASTSERIES, first: 20) {
+      searchId
+      podcastSeries {
+        uuid
+        name
+        description
+        authorName
+        imageUrl
+        itunesId
+        totalEpisodesCount
+        genres {
+          name
+        }
+      }
+    }
+  }
+`
+
+interface SearchResult {
+  searchForTerm: {
+    searchId: string
+    podcastSeries: Array<{
+      uuid: string
+      name: string
+      description: string
+      authorName: string
+      imageUrl: string
+      itunesId: number
+      totalEpisodesCount: number
+      genres: Array<{ name: string }>
+    }>
+  }
+}
+
+export async function searchPodcasts(term: string) {
+  const data = await taddyQuery<SearchResult>(SEARCH_PODCASTS, { term })
+  return data.searchForTerm.podcastSeries
+}
+```
+
+### Get Podcast Details
+
+```typescript
+const GET_PODCAST = `
+  query GetPodcast($uuid: ID!) {
+    getPodcastSeries(uuid: $uuid) {
+      uuid
+      name
+      description
+      authorName
+      imageUrl
+      itunesId
+      rssUrl
+      language {
+        name
+      }
+      totalEpisodesCount
+      genres {
+        name
+      }
+    }
+  }
+`
+
+export async function getPodcast(uuid: string) {
+  const data = await taddyQuery<{ getPodcastSeries: PodcastSeries }>(GET_PODCAST, { uuid })
+  return data.getPodcastSeries
+}
+```
+
+### Get Episodes with Pagination
+
+```typescript
+const GET_EPISODES = `
+  query GetEpisodes($uuid: ID!, $page: Int!, $limitPerPage: Int!) {
+    getPodcastSeries(uuid: $uuid) {
+      uuid
+      name
+      episodes(page: $page, limitPerPage: $limitPerPage, sortOrder: LATEST) {
+        uuid
+        name
+        description
+        audioUrl
+        imageUrl
+        duration
+        datePublished
+        seasonNumber
+        episodeNumber
+        guid
+      }
+    }
+  }
+`
+
+export async function getEpisodes(podcastUuid: string, page: number = 1, limit: number = 25) {
+  const data = await taddyQuery<{ getPodcastSeries: { episodes: PodcastEpisode[] } }>(
+    GET_EPISODES,
+    { uuid: podcastUuid, page, limitPerPage: limit }
+  )
+  return data.getPodcastSeries.episodes
+}
+```
+
+### Get Episode Transcript
+
+Taddy provides transcripts for many episodes. Check `taddyTranscribeStatus` first:
+- `COMPLETE` - Transcript available
+- `PROCESSING` - Being transcribed
+- `NOT_TRANSCRIBED` - No transcript (use Deepgram fallback)
+
+```typescript
+const GET_EPISODE_TRANSCRIPT = `
+  query GetEpisodeTranscript($uuid: ID!) {
+    getPodcastEpisode(uuid: $uuid) {
+      uuid
+      name
+      taddyTranscribeStatus
+      transcript
+      transcriptWithSpeakersAndTimecodes {
+        text
+        startTime
+        endTime
+        speaker
+      }
+    }
+  }
+`
+
+interface TranscriptItem {
+  text: string
+  startTime: number
+  endTime: number
+  speaker: string | null
+}
+
+export async function getEpisodeTranscript(uuid: string) {
+  const data = await taddyQuery<{
+    getPodcastEpisode: {
+      uuid: string
+      name: string
+      taddyTranscribeStatus: string
+      transcript: string | null
+      transcriptWithSpeakersAndTimecodes: TranscriptItem[] | null
+    }
+  }>(GET_EPISODE_TRANSCRIPT, { uuid })
+
+  return data.getPodcastEpisode
+}
+```
+
+### API Route Example
+
+```typescript
+// app/api/podcasts/search/route.ts
+import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { searchPodcasts } from '@/lib/taddy'
+
+export async function GET(request: Request) {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const query = searchParams.get('q')
+
+  if (!query) {
+    return NextResponse.json({ error: 'Query parameter required' }, { status: 400 })
+  }
+
+  try {
+    const podcasts = await searchPodcasts(query)
+    return NextResponse.json({ podcasts })
+  } catch (error) {
+    console.error('Taddy API error:', error)
+    return NextResponse.json({ error: 'Failed to search podcasts' }, { status: 500 })
+  }
+}
+```
+
+### Sync Episode Flow (Taddy → Deepgram Fallback)
+
+```typescript
+// lib/sync.ts
+import { getEpisodeTranscript } from '@/lib/taddy'
+import { transcribeWithDeepgram } from '@/lib/deepgram'
+
+export async function syncEpisodeTranscript(episode: {
+  taddy_uuid: string
+  audio_url: string
+}) {
+  // 1. Try Taddy transcript first
+  const taddyResult = await getEpisodeTranscript(episode.taddy_uuid)
+
+  if (taddyResult.taddyTranscribeStatus === 'COMPLETE' && taddyResult.transcript) {
+    return {
+      source: 'taddy',
+      transcript: taddyResult.transcript,
+      segments: taddyResult.transcriptWithSpeakersAndTimecodes,
+    }
+  }
+
+  // 2. Fallback to Deepgram
+  const deepgramResult = await transcribeWithDeepgram(episode.audio_url)
+
+  return {
+    source: 'deepgram',
+    transcript: deepgramResult.transcript,
+    segments: deepgramResult.utterances,
+  }
+}
+```
+
+### Error Codes
+
+| Code | Description |
+|------|-------------|
+| `API_KEY_INVALID` | Authentication credentials failed |
+| `API_RATE_LIMIT_EXCEEDED` | Monthly quota exhausted |
+| `QUERY_TOO_COMPLEX` | Simplify your query structure |
+| `NOT_FOUND` | Podcast or episode not found |
+
+### Check API Quota
+
+```typescript
+const CHECK_QUOTA = `
+  query {
+    getApiRequestsRemaining
+  }
+`
+
+export async function checkApiQuota() {
+  const data = await taddyQuery<{ getApiRequestsRemaining: number }>(CHECK_QUOTA)
+  return data.getApiRequestsRemaining
+}
+```
 
 ---
 
@@ -2013,24 +2491,27 @@ import {
 ## AI Elements Registry
 
 ### Official Documentation
-- **Main Docs**: https://ai-sdk.dev/elements
-- **Registry**: https://registry.ai-sdk.dev/
-- **GitHub**: https://github.com/vercel/ai-elements
-- **NPM**: https://www.npmjs.com/package/ai-elements
+- **AI SDK Docs**: https://ai-sdk.dev/docs
+- **AI SDK UI**: https://ai-sdk.dev/docs/ai-sdk-ui
+- **useChat Hook**: https://ai-sdk.dev/docs/reference/ai-sdk-ui/use-chat
+- **Chatbot Guide**: https://ai-sdk.dev/docs/ai-sdk-ui/chatbot
 
 ### Installation
 
 **Prerequisites:**
-- Node.js 18+
-- Next.js with AI SDK
+- Node.js 20.9+
+- Next.js 16 with AI SDK
 - shadcn/ui initialized
 - Tailwind CSS with CSS Variables mode
 
-#### Install AI Elements
+#### Install AI SDK and Components
 
 ```bash
-# Install all components
-npx shadcn@latest add https://registry.ai-sdk.dev/all.json
+# Install AI SDK core packages
+npm install ai @ai-sdk/openai @ai-sdk/react
+
+# Install chat components via shadcn registry
+npx shadcn@latest add https://ai-sdk.dev/registry/chat.json
 
 # Install a specific component
 npx shadcn@latest add https://registry.ai-sdk.dev/message.json
@@ -4595,11 +5076,16 @@ NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
+# Clerk (Authentication)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
+CLERK_SECRET_KEY=your-clerk-secret-key
+
+# Taddy (Podcast Data)
+TADDY_USER_ID=your-taddy-user-id
+TADDY_API_KEY=your-taddy-api-key
+
 # OpenAI
 OPENAI_API_KEY=your-openai-key
-
-# Anthropic (optional)
-ANTHROPIC_API_KEY=your-anthropic-key
 
 # Chroma Cloud
 CHROMA_CLOUD_URL=https://api.trychroma.com
@@ -4607,8 +5093,11 @@ CHROMA_API_KEY=your-chroma-key
 CHROMA_TENANT=your-tenant
 CHROMA_DATABASE=your-database
 
-# Deepgram
+# Deepgram (Transcription Fallback)
 DEEPGRAM_API_KEY=your-deepgram-key
+
+# Trigger.dev (Background Jobs)
+TRIGGER_SECRET_KEY=your-trigger-secret-key
 ```
 
 ---
@@ -4621,6 +5110,7 @@ npx create-next-app@latest podcast-chat --typescript --tailwind --app
 
 # Install all dependencies
 npm install @supabase/supabase-js @supabase/ssr
+npm install @clerk/nextjs
 npm install ai @ai-sdk/openai @ai-sdk/react @ai-sdk/mcp
 npm install chromadb @chroma-core/default-embed
 npm install @deepgram/sdk
