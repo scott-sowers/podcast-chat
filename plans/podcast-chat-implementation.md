@@ -104,10 +104,10 @@ pnpm dlx shadcn@latest add button card dialog input textarea scroll-area skeleto
 # =============================================================================
 # Supabase
 # =============================================================================
-# Get these from: https://supabase.com/dashboard/project/_/settings/api
+# Get these from: https://supabase.com/dashboard/project/_/settings/api-keys
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...  # Also called "publishable key" - safe for browser
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...      # Server-only! Never expose to client
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...  # Safe for browser
+SUPABASE_SECRET_KEY=sb_secret_...                        # Server-only! Never expose to client
 
 # =============================================================================
 # Clerk
@@ -477,7 +477,7 @@ export async function createServerSupabaseClient() {
   
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // Also called "publishable key"
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       accessToken: async () => {
         // Use native Clerk session token - no template parameter needed
@@ -506,7 +506,7 @@ export function useSupabaseClient(): SupabaseClient {
   return useMemo(() => {
     return createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       {
         accessToken: async () => {
           // Get native Clerk session token - no template needed
@@ -523,13 +523,13 @@ export function useSupabaseClient(): SupabaseClient {
 import { createClient } from '@supabase/supabase-js'
 
 /**
- * Supabase admin client with service role key.
+ * Supabase admin client with secret key.
  * Use for operations that bypass RLS (webhooks, background jobs, etc.)
  * NEVER expose this client to the browser.
  */
 export const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SECRET_KEY!
 )
 ```
 
@@ -544,7 +544,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SECRET_KEY!
 )
 
 export async function POST(req: Request) {
@@ -1118,7 +1118,7 @@ import { OpenAI } from 'openai'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SECRET_KEY!
 )
 
 const deepgram = createDeepgramClient(process.env.DEEPGRAM_API_KEY!)
