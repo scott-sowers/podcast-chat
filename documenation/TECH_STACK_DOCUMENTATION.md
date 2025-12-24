@@ -71,9 +71,10 @@ npx shadcn@latest add button card dialog input textarea scroll-area
 ## Environment Variables (Quick Start)
 
 ```env
-# Supabase
+# Supabase (get from https://supabase.com/dashboard/project/_/settings/api-keys)
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+SUPABASE_SECRET_KEY=sb_secret_xxx
 
 # Clerk
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
@@ -127,7 +128,7 @@ export async function createClient() {
   const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
@@ -150,7 +151,7 @@ export async function createServerSupabaseClient() {
   const { getToken } = await auth()
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     { accessToken: async () => await getToken() ?? null }
   )
 }
@@ -586,7 +587,7 @@ npm install @supabase/supabase-js @supabase/ssr
 Create `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
 ```
 
 #### 2. Client Utility Functions
@@ -603,7 +604,7 @@ export async function createClient() {
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -632,7 +633,7 @@ import { createBrowserClient } from '@supabase/ssr'
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   )
 }
 ```
@@ -653,7 +654,7 @@ export async function proxy(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -913,7 +914,7 @@ serve(async (req) => {
   const authHeader = req.headers.get('Authorization')!
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? '',
     {
       global: {
         headers: { Authorization: authHeader },
@@ -1436,7 +1437,7 @@ export function useSupabaseClient() {
   const supabase = useMemo(() => {
     return createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       {
         accessToken: async () => {
           return session?.getToken() ?? null
@@ -1461,7 +1462,7 @@ export async function createServerSupabaseClient() {
 
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       accessToken: async () => {
         return await getToken() ?? null
@@ -4403,7 +4404,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 const deepgramClient = createClient(process.env.DEEPGRAM_API_KEY)
 const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY
 )
 
 export async function transcribePodcast(audioUrl: string, podcastId: string) {
@@ -4573,7 +4574,7 @@ Create `mcp.json`:
       ],
       "env": {
         "SUPABASE_URL": "your-project-url",
-        "SUPABASE_SERVICE_ROLE_KEY": "your-service-role-key"
+        "SUPABASE_SECRET_KEY": "your-service-role-key"
       }
     }
   }
@@ -4660,7 +4661,7 @@ const mcpClient = createMcpClient({
       args: ['-y', '@supabase-community/mcp-server-supabase'],
       env: {
         SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
       },
     },
     memory: {
@@ -4848,7 +4849,7 @@ const mcpClient = createMcpClient({
       args: ['-y', '@supabase-community/mcp-server-supabase'],
       env: {
         SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
       },
     },
   },
@@ -5073,8 +5074,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+SUPABASE_SECRET_KEY=your-service-role-key
 
 # Clerk (Authentication)
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
