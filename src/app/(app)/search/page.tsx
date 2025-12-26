@@ -4,16 +4,10 @@ import { useState } from "react";
 import { SearchInput } from "@/components/podcasts/search-input";
 import { PodcastCard } from "@/components/podcasts/podcast-card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface SearchResult {
-  taddy_uuid: string;
-  name: string;
-  description: string | null;
-  author: string | null;
-  image_url: string | null;
-  total_episodes: number | null;
-  genres: string[];
-}
+import {
+  searchPodcastsAction,
+  type SearchResult,
+} from "@/lib/actions/podcasts";
 
 export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -26,16 +20,13 @@ export default function SearchPage() {
     setHasSearched(true);
 
     try {
-      const response = await fetch(
-        `/api/podcasts/search?q=${encodeURIComponent(query)}`
-      );
-      const data = await response.json();
+      const result = await searchPodcastsAction(query);
 
-      if (response.ok) {
-        setResults(data.podcasts);
-      } else {
-        console.error("Search error:", data.error);
+      if (result.error) {
+        console.error("Search error:", result.error);
         setResults([]);
+      } else {
+        setResults(result.podcasts ?? []);
       }
     } catch (error) {
       console.error("Search error:", error);

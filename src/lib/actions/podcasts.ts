@@ -1,29 +1,41 @@
+"use server";
+
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 import { searchPodcasts } from "@/lib/taddy";
 
-export async function GET(request: Request) {
+export interface SearchResult {
+  taddy_uuid: string;
+  name: string;
+  description: string | null;
+  author: string | null;
+  image_url: string | null;
+  itunes_id: string | null;
+  total_episodes: number | null;
+  genres: string[];
+}
+
+export type SearchPodcastsResult =
+  | { podcasts: SearchResult[]; error?: never }
+  | { podcasts?: never; error: string };
+
+export async function searchPodcastsAction(
+  query: string,
+  limit: number = 20
+): Promise<SearchPodcastsResult> {
   const { userId } = await auth();
 
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return { error: "Unauthorized" };
   }
 
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get("q");
-  const limit = parseInt(searchParams.get("limit") || "20", 10);
-
   if (!query || query.trim().length === 0) {
-    return NextResponse.json(
-      { error: "Query parameter 'q' is required" },
-      { status: 400 },
-    );
+    return { error: "Query is required" };
   }
 
   try {
     const podcasts = await searchPodcasts(query, Math.min(limit, 50));
 
-    return NextResponse.json({
+    return {
       podcasts: podcasts.map((p) => ({
         taddy_uuid: p.uuid,
         name: p.name,
@@ -34,12 +46,9 @@ export async function GET(request: Request) {
         total_episodes: p.totalEpisodesCount,
         genres: p.genres || [],
       })),
-    });
+    };
   } catch (error) {
     console.error("Taddy API error:", error);
-    return NextResponse.json(
-      { error: "Failed to search podcasts" },
-      { status: 500 },
-    );
+    return { error: "Failed to search podcasts" };
   }
 }
