@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (!query || query.trim().length === 0) {
     return NextResponse.json(
       { error: "Query parameter 'q' is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -32,14 +32,14 @@ export async function GET(request: Request) {
         image_url: p.imageUrl,
         itunes_id: p.itunesId?.toString() || null,
         total_episodes: p.totalEpisodesCount,
-        genres: p.genres?.map((g) => g.name) || [],
+        genres: p.genres || [],
       })),
     });
   } catch (error) {
     console.error("Taddy API error:", error);
     return NextResponse.json(
       { error: "Failed to search podcasts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

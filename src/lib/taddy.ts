@@ -10,7 +10,7 @@ interface TaddyResponse<T> {
  */
 export async function taddyQuery<T>(
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
 ): Promise<T> {
   const userId = process.env.TADDY_USER_ID;
   const apiKey = process.env.TADDY_API_KEY;
@@ -30,7 +30,9 @@ export async function taddyQuery<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`Taddy API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Taddy API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const result: TaddyResponse<T> = await response.json();
@@ -54,9 +56,9 @@ export interface TaddyPodcast {
   imageUrl: string | null;
   itunesId: number | null;
   rssUrl: string | null;
-  language: { name: string } | null;
+  language: string | null;
   totalEpisodesCount: number | null;
-  genres: Array<{ name: string }> | null;
+  genres: string[] | null;
 }
 
 export interface TaddyEpisode {
@@ -84,8 +86,8 @@ export interface TaddyTranscriptItem {
 // =============================================================================
 
 const SEARCH_PODCASTS_QUERY = `
-  query SearchPodcasts($term: String!, $first: Int) {
-    searchForTerm(term: $term, filterForTypes: PODCASTSERIES, first: $first) {
+  query SearchPodcasts($term: String!, $limitPerPage: Int) {
+    searchForTerm(term: $term, filterForTypes: PODCASTSERIES, limitPerPage: $limitPerPage) {
       searchId
       podcastSeries {
         uuid
@@ -95,9 +97,7 @@ const SEARCH_PODCASTS_QUERY = `
         imageUrl
         itunesId
         totalEpisodesCount
-        genres {
-          name
-        }
+        genres
       }
     }
   }
@@ -113,13 +113,9 @@ const GET_PODCAST_QUERY = `
       imageUrl
       itunesId
       rssUrl
-      language {
-        name
-      }
+      language
       totalEpisodesCount
-      genres {
-        name
-      }
+      genres
     }
   }
 `;
@@ -178,11 +174,11 @@ interface SearchPodcastsResult {
  */
 export async function searchPodcasts(
   term: string,
-  limit: number = 20
+  limit: number = 20,
 ): Promise<TaddyPodcast[]> {
   const data = await taddyQuery<SearchPodcastsResult>(SEARCH_PODCASTS_QUERY, {
     term,
-    first: limit,
+    limitPerPage: limit,
   });
   return data.searchForTerm.podcastSeries;
 }
@@ -213,7 +209,7 @@ interface GetEpisodesResult {
 export async function getEpisodes(
   podcastUuid: string,
   page: number = 1,
-  limit: number = 25
+  limit: number = 25,
 ): Promise<TaddyEpisode[]> {
   const data = await taddyQuery<GetEpisodesResult>(GET_EPISODES_QUERY, {
     uuid: podcastUuid,
@@ -244,7 +240,7 @@ export async function getEpisodeTranscript(uuid: string): Promise<{
 } | null> {
   const data = await taddyQuery<GetEpisodeTranscriptResult>(
     GET_EPISODE_TRANSCRIPT_QUERY,
-    { uuid }
+    { uuid },
   );
 
   const episode = data.getPodcastEpisode;

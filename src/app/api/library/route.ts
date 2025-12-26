@@ -33,7 +33,7 @@ export async function GET() {
           total_episodes,
           genres
         )
-      `
+      `,
       )
       .order("added_at", { ascending: false });
 
@@ -41,7 +41,7 @@ export async function GET() {
       console.error("Error fetching library:", error);
       return NextResponse.json(
         { error: "Failed to fetch library" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -56,7 +56,7 @@ export async function GET() {
     console.error("Error fetching library:", error);
     return NextResponse.json(
       { error: "Failed to fetch library" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     if (!taddy_uuid) {
       return NextResponse.json(
         { error: "taddy_uuid is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     if (profileError || !userProfile) {
       return NextResponse.json(
         { error: "User profile not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -120,9 +120,9 @@ export async function POST(request: Request) {
           author: taddyPodcast.authorName,
           image_url: taddyPodcast.imageUrl,
           rss_url: taddyPodcast.rssUrl,
-          language: taddyPodcast.language?.name || null,
+          language: taddyPodcast.language || null,
           total_episodes: taddyPodcast.totalEpisodesCount,
-          genres: taddyPodcast.genres?.map((g) => g.name) || [],
+          genres: taddyPodcast.genres || [],
         })
         .select("id")
         .single();
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
         console.error("Error creating podcast:", insertError);
         return NextResponse.json(
           { error: "Failed to add podcast" },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
     if (existingUserPodcast) {
       return NextResponse.json(
         { error: "Podcast already in library" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
       console.error("Error adding to library:", addError);
       return NextResponse.json(
         { error: "Failed to add to library" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
     console.error("Error adding to library:", error);
     return NextResponse.json(
       { error: "Failed to add podcast to library" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -196,10 +196,7 @@ export async function DELETE(request: Request) {
     const { id } = await request.json();
 
     if (!id) {
-      return NextResponse.json(
-        { error: "id is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -213,7 +210,7 @@ export async function DELETE(request: Request) {
       console.error("Error removing from library:", error);
       return NextResponse.json(
         { error: "Failed to remove from library" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -222,7 +219,7 @@ export async function DELETE(request: Request) {
     console.error("Error removing from library:", error);
     return NextResponse.json(
       { error: "Failed to remove podcast from library" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
