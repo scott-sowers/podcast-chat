@@ -40,9 +40,39 @@ Uses `@/*` path alias for imports from `src/`.
 
 ## Styling
 
-- Tailwind CSS with CSS custom properties for theming
-- Dark mode via `prefers-color-scheme` media query
-- Font variables: `--font-geist-sans`, `--font-geist-mono`
+This project follows the **Borrowed Brain Design Brief** - a dark-first, professional UI aesthetic.
+
+### Design System
+
+- **Theme**: Dark-first with deep charcoal backgrounds
+- **Colors**: OKLCH color space for consistent dark theme
+  - Background: `oklch(0.13 0 0)` (deep charcoal)
+  - Card: `oklch(0.17 0 0)` (elevated surface)
+  - Border: `oklch(0.25 0 0)` (subtle borders)
+- **Accent Gradient**: Violet → Amber (`gradient-accent` utility)
+  ```css
+  background: linear-gradient(135deg, oklch(0.65 0.25 290), oklch(0.75 0.18 85));
+  ```
+- **Font Variables**: `--font-geist-sans`, `--font-geist-mono`
+
+### Layout Patterns
+
+- **Left sidebar navigation**: 64px wide, icon-forward with tooltips
+- **Main content**: `ml-16` offset, max-width `6xl`, padding `p-6`
+- **Cards**: Use `bg-card/50 border-border/50 hover:border-border` for subtle elevation
+
+### Component Guidelines
+
+- Use `gradient-accent` for primary CTAs (buttons, highlights)
+- Cards should have `overflow-hidden` and subtle border transitions
+- Apply `rounded-lg` consistently for cards and buttons
+- Use Lucide icons from `lucide-react`
+
+### Key Files
+
+- `src/app/globals.css` - Theme tokens and custom utilities
+- `src/components/sidebar-nav.tsx` - Main navigation component
+- `src/components/ui/` - shadcn/ui base components
 
 ## Documentation
 

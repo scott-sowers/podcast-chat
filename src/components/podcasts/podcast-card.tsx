@@ -35,7 +35,7 @@ export function PodcastCard({
   isLoading,
 }: PodcastCardProps) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden bg-card/50 border-border/50 hover:border-border transition-colors">
       <div className="aspect-square relative">
         {image_url ? (
           <Image
@@ -78,7 +78,7 @@ export function PodcastCard({
           </div>
         )}
       </CardContent>
-      <CardFooter className="p-4 pt-0">
+      <CardFooter className="p-4 pt-0 flex gap-2">
         {isInLibrary ? (
           <Button
             variant="outline"
@@ -90,7 +90,7 @@ export function PodcastCard({
           </Button>
         ) : (
           <Button
-            className="w-full"
+            className="w-full gradient-accent border-0"
             onClick={() => onAdd?.(taddy_uuid)}
             disabled={isLoading}
           >
