@@ -63,6 +63,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**",
       },
+      {
+        // Allow any http image as fallback (some podcast feeds use http)
+        protocol: "http",
+        hostname: "**",
+      },
     ],
   },
 };

@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PodcastCard } from "@/components/podcasts/podcast-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Search } from "lucide-react";
 
 interface LibraryPodcast {
   id: string;
@@ -22,6 +24,7 @@ export default function LibraryPage() {
   const [podcasts, setPodcasts] = useState<LibraryPodcast[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchLibrary();
@@ -67,58 +70,75 @@ export default function LibraryPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Your Library</h1>
-          <p className="text-muted-foreground">
-            Podcasts you&apos;ve added to chat with
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <Skeleton className="aspect-square w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const filtered = podcasts.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Your Library</h1>
-          <p className="text-muted-foreground">
-            {podcasts.length === 0
-              ? "No podcasts yet. Search to add some!"
-              : `${podcasts.length} podcast${podcasts.length === 1 ? "" : "s"} in your library`}
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Your Library
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {podcasts.length} podcast{podcasts.length !== 1 ? "s" : ""} saved
           </p>
         </div>
-        <Button asChild>
-          <Link href="/search">Add Podcasts</Link>
+        <Button asChild className="gradient-accent border-0">
+          <Link href="/">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Podcasts
+          </Link>
         </Button>
       </div>
 
-      {podcasts.length === 0 ? (
-        <div className="text-center py-12 border rounded-lg bg-muted/50">
-          <div className="text-4xl mb-4">🎙️</div>
-          <h2 className="text-xl font-semibold mb-2">No podcasts yet</h2>
-          <p className="text-muted-foreground mb-4">
-            Search for podcasts to add them to your library and start chatting.
-          </p>
-          <Button asChild>
-            <Link href="/search">Search Podcasts</Link>
+      {/* Search */}
+      {!isLoading && podcasts.length > 0 && (
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search library..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-72 rounded-xl" />
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && podcasts.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Your library is empty</p>
+          <Button asChild variant="link" className="mt-2">
+            <Link href="/">Discover podcasts to add</Link>
           </Button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {podcasts.map((podcast) => (
+      )}
+
+      {/* No Search Results */}
+      {!isLoading && podcasts.length > 0 && filtered.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            No podcasts match &quot;{search}&quot;
+          </p>
+        </div>
+      )}
+
+      {/* Podcast Grid */}
+      {!isLoading && filtered.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((podcast) => (
             <PodcastCard
               key={podcast.id}
               id={podcast.id}
