@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,8 +35,10 @@ export function PodcastCard({
   onRemove,
   isLoading,
 }: PodcastCardProps) {
-  return (
-    <Card className="overflow-hidden bg-card/50 border-border/50 hover:border-border transition-colors">
+  const isClickable = isInLibrary && id;
+
+  const cardContent = (
+    <>
       <div className="aspect-square relative">
         {image_url ? (
           <Image
@@ -78,12 +81,30 @@ export function PodcastCard({
           </div>
         )}
       </CardContent>
+    </>
+  );
+
+  return (
+    <Card className="overflow-hidden bg-card/50 border-border/50 hover:border-border transition-colors">
+      {isClickable ? (
+        <Link href={`/podcasts/${id}`} className="block cursor-pointer">
+          {cardContent}
+        </Link>
+      ) : (
+        cardContent
+      )}
       <CardFooter className="p-4 pt-0 flex gap-2">
         {isInLibrary ? (
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => id && onRemove?.(id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (id) {
+                onRemove?.(id);
+              }
+            }}
             disabled={isLoading}
           >
             {isLoading ? "Removing..." : "Remove from Library"}
